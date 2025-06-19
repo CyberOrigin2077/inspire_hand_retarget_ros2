@@ -90,8 +90,7 @@ def generate_launch_description():
         # right_port_arg,
         finger_config_path_arg,
         robot_config_path_arg,
-        left_calib_path_arg,
-        right_calib_path_arg,
+        left_calib_path_arg,git
         inspire_port_arg,
         # node1,
         node2,
