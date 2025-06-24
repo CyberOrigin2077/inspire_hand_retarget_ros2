@@ -11,8 +11,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
 
-# define DEG2RAD 0.017453292519943295
-
 class InspireRunner : public rclcpp::Node
 {
 public:
@@ -27,24 +25,10 @@ public:
     // Initialize DDS
     unitree::robot::ChannelFactory::Instance()->Init(0, param::network);
 
-    // dds
-    // handcmd = std::make_shared<unitree::robot::SubscriptionBase<unitree_go::msg::dds_::MotorCmds_>>(
-    //     "rt/" + param::ns + "/cmd");
-    // handcmd->msg_.cmds().resize(12);
-    
-    // handstate = std::make_unique<unitree::robot::RealTimePublisher<unitree_go::msg::dds_::MotorStates_>>(
-    //     "rt/" + param::ns + "/state");
-    // handstate->msg_.states().resize(12);
-
     // ROS2 subscriber for retargeted_qpos
     retargeted_qpos_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
       "/retargeted_qpos", 10,
       std::bind(&InspireRunner::retargeted_qpos_callback, this, std::placeholders::_1));
-
-    // Start running
-    // thread = std::make_shared<unitree::common::RecurrentThread>(
-    //   10000, std::bind(&InspireRunner::run, this)
-    // );
   }
 
   /**
@@ -63,14 +47,10 @@ public:
       }
       else if(i == 4)
       {
-        // auto angle_val = static_cast<double>(msg_data[i]) * 2;
-        // eigen_vec(i) = (kAngleRangeMap[i].second - static_cast<double>(msg_data[i])) / (kAngleRangeMap[i].second - kAngleRangeMap[i].first);
         eigen_vec(i) = (0.3 - static_cast<double>(msg_data[i])) * 3.3;
-        // eigen_vec(i) = 1;
       }
       else if(i == 5)
       {
-        // eigen_vec(i) = (kAngleRangeMap[i].second - kAngleRangeMap[i].first - static_cast<double>(msg_data[i])) / (kAngleRangeMap[i].second - kAngleRangeMap[i].first);
         eigen_vec(i) = (1.31 - static_cast<double>(msg_data[i]) )/ 1.31;
       }
     }
@@ -84,55 +64,13 @@ public:
       return;
     }
     Eigen::Matrix<double, 6, 1> qcmd = arrayToEigen(msg);
-    std::cout << "===========================" << std::endl;
-    std::cout << "msg: " << msg->data[0] << " " << msg->data[1] << " " << msg->data[2] << " " << msg->data[3] << " " << msg->data[4] << " " << msg->data[5] << std::endl;
-    std::cout << "qcmd: " << qcmd.transpose() << std::endl;
+    RCLCPP_INFO(this->get_logger(), "===========================");
+    RCLCPP_INFO(this->get_logger(), "msg: %.3f %.3f %.3f %.3f %.3f %.3f", 
+                msg->data[0], msg->data[1], msg->data[2], msg->data[3], msg->data[4], msg->data[5]);
+    RCLCPP_INFO(this->get_logger(), "qcmd: %.3f %.3f %.3f %.3f %.3f %.3f",
+                qcmd(0), qcmd(1), qcmd(2), qcmd(3), qcmd(4), qcmd(5));
     righthand->SetPosition(qcmd.block<6, 1>(0, 0));
   }
-
-
-//   void run()
-//   {
-//     // Set command for left hand (keeping existing functionality)
-//     for(int i(6); i<12; i++)
-//     {
-//       qcmd(i) = handcmd->msg_.cmds()[i].q();
-//     }
-//     lefthand->SetPosition(qcmd.block<6, 1>(6, 0));
-
-//     // Recv state
-//     Eigen::Matrix<double, 6, 1> qtemp;
-//     if(righthand->GetPosition(qtemp) == 0)
-//     {
-//       qstate.block<6, 1>(0, 0) = qtemp;
-//     }
-//     else
-//     {
-//       for(int i(0); i<6; i++)
-//       {
-//         handstate->msg_.states()[i].lost()++;
-//       }
-//     }
-//     if(lefthand->GetPosition(qtemp) == 0)
-//     {
-//       qstate.block<6, 1>(6, 0) = qtemp;
-//     }
-//     else
-//     {
-//       for(int i(0); i<6; i++)
-//       {
-//         handstate->msg_.states()[i+6].lost()++;
-//       }
-//     }
-//     if(handstate->trylock())
-//     {
-//         for(int i(0); i<12; i++)
-//         {
-//             handstate->msg_.states()[i].q() = qstate(i);
-//         }
-//         handstate->unlockAndPublish();
-//     }
-//   }
 
 private:
   unitree::common::ThreadPtr thread;
@@ -149,15 +87,6 @@ private:
 
   // ROS2 subscriber
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr retargeted_qpos_sub_;
-
-  const std::vector<std::pair<double, double>> kAngleRangeMap = {
-    {19.0 * DEG2RAD, 176.7 * DEG2RAD},
-    {19.0 * DEG2RAD, 176.7 * DEG2RAD}, 
-    {19.0 * DEG2RAD, 176.7 * DEG2RAD},
-    {19.0 * DEG2RAD, 176.7 * DEG2RAD},
-    {-13.0 * DEG2RAD, 53.6 * DEG2RAD},
-    {90 * DEG2RAD, 165 * DEG2RAD}
-  };
 };
 
 int main(int argc, char ** argv)
@@ -165,8 +94,7 @@ int main(int argc, char ** argv)
   auto vm = param::helper(argc, argv);
   unitree::robot::ChannelFactory::Instance()->Init(0, param::network);
 
-  std::cout << " --- Unitree Robotics --- " << std::endl;
-  std::cout << "  Inspire Hand Controller  " << std::endl;
+  RCLCPP_INFO(rclcpp::get_logger("inspire_retarget"), "Inspire Hand Retargeting...");
 
   rclcpp::init(argc, argv);
   auto runner = std::make_shared<InspireRunner>();
