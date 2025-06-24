@@ -73,17 +73,11 @@ public:
   }
 
 private:
-  unitree::common::ThreadPtr thread;
-
   // inspire
   SerialPort::SharedPtr serial;
   std::shared_ptr<inspire::InspireHand> lefthand;
   std::shared_ptr<inspire::InspireHand> righthand;
-  Eigen::Matrix<double, 12, 1> qcmd, qstate;
-
-  // dds
-  std::unique_ptr<unitree::robot::RealTimePublisher<unitree_go::msg::dds_::MotorStates_>> handstate;
-  std::shared_ptr<unitree::robot::SubscriptionBase<unitree_go::msg::dds_::MotorCmds_>> handcmd;
+  Eigen::Matrix<double, 12, 1> qcmd;
 
   // ROS2 subscriber
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr retargeted_qpos_sub_;
